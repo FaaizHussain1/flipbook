@@ -1,228 +1,161 @@
-document.addEventListener("DOMContentLoaded", () => {
-    // Images array - using the same order as provided
-    const images = [
-        "img-8.png",
-        "img-7.png",
-        "img-6.png",
-        "img-5.png",
-        "img-3.png",
-        "img-4.png",
-        "img-2.png",
-        "img-1.png",
-    ]
+// References to DOM Elements
+const book = document.querySelector("#book")
+const container = document.querySelector(".container")
 
-    const totalPages = images.length
-    const book = document.getElementById("book")
-    const currentPageElement = document.getElementById("current-page")
-    const totalPagesElement = document.getElementById("total-pages")
+const paper1 = document.querySelector("#p1")
+const paper2 = document.querySelector("#p2")
+const paper3 = document.querySelector("#p3")
+const paper4 = document.querySelector("#p4")
 
-    // Set total pages in the UI
-    totalPagesElement.textContent = totalPages.toString()
+// Business Logic
+let currentLocation = 1
+const numOfPapers = 4
+const maxLocation = numOfPapers + 1
+let scrollThreshold = 0
+let lastScrollPosition = 0
+let isFlipping = false
+let scrollTimer = null
 
-    // Current page index (0-based)
-    let currentPage = 0
+// Initialize the book
+function init() {
+    // Set initial state
+    closeBook(true)
 
-    // Book state
-    let isOpen = false
-    let isAnimating = false
+    // Calculate scroll thresholds
+    const containerHeight = container.scrollHeight
+    scrollThreshold = containerHeight / (numOfPapers + 2) // +2 for start and end buffer
 
-    // Create pages
-    function createPages() {
-        // Clear any existing pages
-        book.innerHTML = ""
+    // Add scroll event listener to the container instead of window
+    container.addEventListener("scroll", handleScroll)
 
-        // Create pages with front and back sides
-        for (let i = 0; i < totalPages; i++) {
-            const page = document.createElement("div")
-            page.className = "page"
-            page.id = `page-${i}`
-
-            // Set z-index in reverse order so first page is on top
-            page.style.zIndex = totalPages - i
-
-            // Create front side of the page
-            const pageFront = document.createElement("div")
-            pageFront.className = "page-front"
-            pageFront.style.backgroundImage = `url(${images[i]})`
-
-            // Create back side of the page
-            const pageBack = document.createElement("div")
-            pageBack.className = "page-back"
-
-            // If there's a next image, use it for the back
-            if (i < totalPages - 1) {
-                pageBack.style.backgroundImage = `url(${images[i + 1]})`
-            } else {
-                // Last page back is blank
-                pageBack.style.backgroundColor = "#f8f8f8"
-            }
-
-            // Append sides to the page
-            page.appendChild(pageFront)
-            page.appendChild(pageBack)
-
-            // Add page to the book
-            book.appendChild(page)
-        }
-    }
-
-    // Initialize the book
-    createPages()
-
-    // Optimized scroll handler with throttling
-    let lastScrollTime = 0
-    const scrollThrottleTime = 300 // ms between scroll events
-
-    window.addEventListener("wheel", handleScroll, { passive: false })
-
-    function handleScroll(e) {
-        e.preventDefault()
-
-        const now = Date.now()
-        if (isAnimating || now - lastScrollTime < scrollThrottleTime) return
-
-        lastScrollTime = now
-
-        if (e.deltaY > 0) {
-            // Scroll down - go to next page
-            if (currentPage < totalPages - 1) {
-                nextPage()
-            }
-        } else {
-            // Scroll up - go to previous page
-            if (currentPage > 0) {
-                previousPage()
-            }
-        }
-    }
-
-    // Go to next page with optimized animation
-    function nextPage() {
-        if (currentPage >= totalPages - 1 || isAnimating) return
-        isAnimating = true
-
-        // If book is closed, open it first
-        if (!isOpen) {
-            openBook()
-            return
-        }
-
-        const currentPageElement = document.getElementById(`page-${currentPage}`)
-
-        // Use requestAnimationFrame for smoother animation
-        requestAnimationFrame(() => {
-            // Add flipped class to trigger the CSS transition
-            currentPageElement.classList.add("flipped")
-
-            // Update z-index efficiently
-            updatePageZIndex()
-
-            // Update page counter immediately for responsive UI
-            currentPage++
-            updatePageIndicator()
-
-            // Reset animation flag after transition completes
-            setTimeout(() => {
-                isAnimating = false
-            }, 600)
-        })
-    }
-
-    // Go to previous page with optimized animation
-    function previousPage() {
-        if (currentPage <= 0 || isAnimating) return
-        isAnimating = true
-
-        currentPage--
-        const currentPageElement = document.getElementById(`page-${currentPage}`)
-
-        // Use requestAnimationFrame for smoother animation
-        requestAnimationFrame(() => {
-            // Remove flipped class to trigger the CSS transition
-            currentPageElement.classList.remove("flipped")
-
-            // Update z-index efficiently
-            updatePageZIndex()
-
-            // Update page indicator immediately
-            updatePageIndicator()
-
-            // If we're back to the first page, close the book after animation completes
-            if (currentPage === 0) {
-                setTimeout(closeBook, 600)
-            }
-
-            // Reset animation flag after transition completes
-            setTimeout(() => {
-                isAnimating = false
-            }, 600)
-        })
-    }
-
-    // Optimized z-index update
-    function updatePageZIndex() {
-        // Use requestAnimationFrame to batch DOM updates
-        requestAnimationFrame(() => {
-            for (let i = 0; i < totalPages; i++) {
-                const page = document.getElementById(`page-${i}`)
-                if (i < currentPage) {
-                    // Pages before current page should be below
-                    page.style.zIndex = i
-                } else {
-                    // Current and future pages should be on top in reverse order
-                    page.style.zIndex = totalPages - i + currentPage
-                }
-            }
-        })
-    }
-
-    // Open the book
-    function openBook() {
-        book.classList.add("open")
-        isOpen = true
-
-        // After opening animation, flip to first page
-        setTimeout(() => {
-            isAnimating = false
-            nextPage()
-        }, 300)
-    }
-
-    // Close the book
-    function closeBook() {
-        book.classList.remove("open")
-        isOpen = false
-        isAnimating = false
-    }
-
-    // Update page indicator
-    function updatePageIndicator() {
-        // For a book-like experience, show current page and next page (or just current if it's the last page)
-        const leftPage = currentPage + 1
-        const rightPage = currentPage + 2 <= totalPages ? currentPage + 2 : currentPage + 1
-        currentPageElement.textContent = `${leftPage}-${rightPage}`
-    }
+    // Add wheel event listener for more responsive page flipping
+    container.addEventListener("wheel", handleWheel, { passive: false })
 
     // Add keyboard navigation
-    document.addEventListener("keydown", (e) => {
-        if (isAnimating) return
+    document.addEventListener("keydown", handleKeyDown)
 
-        if (e.key === "ArrowRight" || e.key === "ArrowDown") {
-            if (currentPage < totalPages - 1) {
-                nextPage()
-            }
-        } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
-            if (currentPage > 0) {
-                previousPage()
-            }
+    // Add touch support for mobile
+    setupTouchEvents()
+}
+
+function openBook() {
+    book.style.transform = "translateX(50%)"
+}
+
+function closeBook(isAtBeginning) {
+    if (isAtBeginning) {
+        book.style.transform = "translateX(0%)"
+    } else {
+        book.style.transform = "translateX(100%)"
+    }
+}
+
+function handleScroll() {
+    // If we're currently flipping a page, don't trigger another flip
+    if (isFlipping) return
+
+    const scrollPosition = container.scrollTop
+    const scrollDirection = scrollPosition > lastScrollPosition ? "down" : "up"
+
+    // Calculate which page we should be on based on scroll position
+    const targetPage = Math.floor(scrollPosition / scrollThreshold)
+
+    // Only flip if we've scrolled enough to reach a new threshold
+    if (scrollDirection === "down" && targetPage >= currentLocation && currentLocation < maxLocation) {
+        // Start flipping with a small delay to prevent rapid flipping
+        isFlipping = true
+        goNextPage()
+
+        // Set a timer to allow the next flip after the animation completes
+        clearTimeout(scrollTimer)
+        scrollTimer = setTimeout(() => {
+            isFlipping = false
+        }, 600) // Slightly longer than the CSS transition
+    } else if (scrollDirection === "up" && targetPage < currentLocation - 1 && currentLocation > 1) {
+        // Start flipping with a small delay to prevent rapid flipping
+        isFlipping = true
+        goPrevPage()
+
+        // Set a timer to allow the next flip after the animation completes
+        clearTimeout(scrollTimer)
+        scrollTimer = setTimeout(() => {
+            isFlipping = false
+        }, 600) // Slightly longer than the CSS transition
+    }
+
+    lastScrollPosition = scrollPosition
+}
+
+// Handle mouse wheel events for more responsive page flipping
+function handleWheel(e) {
+    // If we're currently flipping a page, don't trigger another flip
+    if (isFlipping) {
+        e.preventDefault()
+        return
+    }
+
+    if (e.deltaY > 0) {
+        // Scroll down - go to next page
+        if (currentLocation < maxLocation) {
+            e.preventDefault()
+            isFlipping = true
+            goNextPage()
+
+            // Set a timer to allow the next flip after the animation completes
+            clearTimeout(scrollTimer)
+            scrollTimer = setTimeout(() => {
+                isFlipping = false
+            }, 600)
         }
-    })
+    } else {
+        // Scroll up - go to previous page
+        if (currentLocation > 1) {
+            e.preventDefault()
+            isFlipping = true
+            goPrevPage()
 
-    // Optimized touch support for mobile devices
+            // Set a timer to allow the next flip after the animation completes
+            clearTimeout(scrollTimer)
+            scrollTimer = setTimeout(() => {
+                isFlipping = false
+            }, 600)
+        }
+    }
+}
+
+// Handle keyboard navigation
+function handleKeyDown(e) {
+    if (isFlipping) return
+
+    if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+        if (currentLocation < maxLocation) {
+            isFlipping = true
+            goNextPage()
+
+            clearTimeout(scrollTimer)
+            scrollTimer = setTimeout(() => {
+                isFlipping = false
+            }, 600)
+        }
+    } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+        if (currentLocation > 1) {
+            isFlipping = true
+            goPrevPage()
+
+            clearTimeout(scrollTimer)
+            scrollTimer = setTimeout(() => {
+                isFlipping = false
+            }, 600)
+        }
+    }
+}
+
+// Setup touch events for mobile
+function setupTouchEvents() {
     let touchStartY = 0
     let touchStartTime = 0
 
-    document.addEventListener(
+    container.addEventListener(
         "touchstart",
         (e) => {
             touchStartY = e.touches[0].clientY
@@ -231,12 +164,13 @@ document.addEventListener("DOMContentLoaded", () => {
         { passive: false },
     )
 
-    document.addEventListener(
+    container.addEventListener(
         "touchmove",
         (e) => {
-            e.preventDefault()
-
-            if (isAnimating) return
+            if (isFlipping) {
+                e.preventDefault()
+                return
+            }
 
             const touchY = e.touches[0].clientY
             const diff = touchStartY - touchY
@@ -245,15 +179,29 @@ document.addEventListener("DOMContentLoaded", () => {
             // Only process if it's a deliberate swipe (not a small movement)
             // and not too fast (to prevent accidental flips)
             if (Math.abs(diff) > 30 && timeDiff > 50 && timeDiff < 500) {
+                e.preventDefault()
+
                 if (diff > 0) {
                     // Swipe up - next page
-                    if (currentPage < totalPages - 1) {
-                        nextPage()
+                    if (currentLocation < maxLocation) {
+                        isFlipping = true
+                        goNextPage()
+
+                        clearTimeout(scrollTimer)
+                        scrollTimer = setTimeout(() => {
+                            isFlipping = false
+                        }, 600)
                     }
                 } else {
                     // Swipe down - previous page
-                    if (currentPage > 0) {
-                        previousPage()
+                    if (currentLocation > 1) {
+                        isFlipping = true
+                        goPrevPage()
+
+                        clearTimeout(scrollTimer)
+                        scrollTimer = setTimeout(() => {
+                            isFlipping = false
+                        }, 600)
                     }
                 }
 
@@ -264,4 +212,81 @@ document.addEventListener("DOMContentLoaded", () => {
         },
         { passive: false },
     )
-})
+}
+
+function goNextPage() {
+    if (currentLocation < maxLocation) {
+        switch (currentLocation) {
+            case 1:
+                openBook()
+                paper1.classList.add("flipped")
+                paper1.style.zIndex = 1
+                break
+            case 2:
+                paper2.classList.add("flipped")
+                paper2.style.zIndex = 2
+                break
+            case 3:
+                paper3.classList.add("flipped")
+                paper3.style.zIndex = 3
+                break
+            case 4:
+                paper4.classList.add("flipped")
+                paper4.style.zIndex = 4
+                closeBook(false)
+                break
+            default:
+                throw new Error("unknown state")
+        }
+        currentLocation++
+
+        // Update scroll position to match the current page
+        updateScrollPosition()
+    }
+}
+
+function goPrevPage() {
+    if (currentLocation > 1) {
+        switch (currentLocation) {
+            case 2:
+                closeBook(true)
+                paper1.classList.remove("flipped")
+                paper1.style.zIndex = 4
+                break
+            case 3:
+                paper2.classList.remove("flipped")
+                paper2.classList.remove("flipped")
+                paper2.style.zIndex = 3
+                break
+            case 4:
+                paper3.classList.remove("flipped")
+                paper3.style.zIndex = 2
+                break
+            case 5:
+                paper4.classList.remove("flipped")
+                paper4.style.zIndex = 1
+                openBook()
+                break
+            default:
+                throw new Error("unknown state")
+        }
+        currentLocation--
+
+        // Update scroll position to match the current page
+        updateScrollPosition()
+    }
+}
+
+// Update the container's scroll position to match the current page
+function updateScrollPosition() {
+    const targetScrollPosition = (currentLocation - 1) * scrollThreshold
+
+    // Use smooth scrolling to animate to the new position
+    container.scrollTo({
+        top: targetScrollPosition,
+        behavior: "smooth",
+    })
+}
+
+// Initialize the book when the page loads
+window.onload = init
