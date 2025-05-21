@@ -17,7 +17,7 @@ body {
 .container {
   height: 100vh; /* Full viewport height */
   width: 100%;
-  max-width: 1200px;
+  max-width: 2200px;
   overflow-y: auto; /* Make container scrollable */
   overflow-x: hidden;
   scroll-behavior: smooth; /* Enable smooth scrolling */
